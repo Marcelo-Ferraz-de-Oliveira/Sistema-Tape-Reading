@@ -1,18 +1,24 @@
-#Sistema para obtenção e registro de dados de ativos da BMF&BOVESPA
-#O sistema registra os dados de negócio e livro de ofertas dos ativos selecionados
-#Os dados são obtidos em "tempo real" através do sistema de cotações Cedro Crystal Datafeed
-#A conexão é feita via telnet nativo do linux, usando a biblioteca pexpect
-#Informações sobre o sistema estã disponíveis em: http://promo.cedrotech.com/crystal-data-feed-solucoes-de-market-data
-#Para entender a sintaxe do sistema, acesse: http://files.cedrotech.com/Downloads/Cedro/documentos/Documentacao_Crystal_Data_Feed.pdf
-
+'''
+Sistema para obtenção e registro de dados de ativos da BMF&BOVESPA
+O sistema registra os dados de negócio e livro de ofertas dos ativos selecionados
+Os dados são obtidos em "tempo real" através do sistema de cotações Cedro Crystal Datafeed
+A conexão é feita via telnet nativo do linux, usando a biblioteca pexpect
+Informações sobre o sistema estã disponíveis em: http://promo.cedrotech.com/crystal-data-feed-solucoes-de-market-data
+Para entender a sintaxe do sistema, acesse: http://files.cedrotech.com/Downloads/Cedro/documentos/Documentacao_Crystal_Data_Feed.pdf
+'''
 
 import pexpect
-from datetime import datetime
+from datetime import datetime, time
 
-dir = "seu_diretorio"#edite inserindo o diretório de trabalho
+workdir = "seu_diretorio"#edite inserindo o diretório de trabalho
+username = "nome_usuario"#edite inserindo seu usuário de acesso ao Crystal DataFeed
+password = "senha"#edite inserindo sua senha de acesso ao Crystal DataFeed
 
-#Classe para receber os dados, adicionar um timestamp no formato unix_epoch em microsegundos em cada linha e salvar em arquivo. 
-#A classe recebe como parâmetro um file handle e ela própria simula um, uma vez que o pexpect espera receber um file handle como parâmetro
+'''
+Classe para receber os dados, adicionar um timestamp no formato unix_epoch em microsegundos ao fina de cada linha, e salvar em arquivo. 
+A classe recebe como parâmetro um file handle e ela própria simula um, uma vez que o pexpect espera receber um file handle como parâmetro
+'''
+
 class TimestampedFile(object):
     def __init__(self,file):
         self.file = file
@@ -161,14 +167,14 @@ ativos.append("wdo"+dolar)
 #função para iniciar a leitura dos dados via telnet, usando a biblioteca pexpect, e repassá-los à função TimeStampedFile
 def rodar():
     telconn = pexpect.spawn("telnet datafeed1.cedrofinances.com.br 81")
-    telconn.logfile_read=TimestampedFile(open(dir+"dado_bruto.log","a"))
+    telconn.logfile_read=TimestampedFile(open(workdir+"\dado_bruto.log","a"))
     telconn.delaybeforesend = 0
     telconn.expect(".")
     telconn.sendline("")
     telconn.expect(":")
-    telconn.sendline("username")#edite inserindo o seu usuário
+    telconn.sendline(username)
     telconn.expect(":")
-    telconn.sendline("password")#edite inserindo a sua senha
+    telconn.sendline(password)
     telconn.expect("d")
     #faz a requisição de informações para cada ativo da lista
     for ativo in ativos:
@@ -181,13 +187,14 @@ def rodar():
             pass
         except:#em caso de outra exceção (como a queda do sistema), a função é chamada novamente para tentar uma reconexão
             rodar()
-        if datetime.now().hour >= 18:
-            if datetime.now().minute >= 30:#encerra o sistema às 18:30 - horário de Brasília
-                telconn.close()
-                break
+        if datetime.now().time() >= time(18,30,0):#encerra o sistema às 18:30 - horário de Brasília
+            telconn.close()
+            break
+
 rodar()
+
 #Datar e compactar os arquivos
-print(pexpect.run("mv dado_bruto.log dado_bruto_"+str(datetime.now().date())+".log", cwd=dir, timeout = -1))
-print(pexpect.run("tar -cvjf dado_bruto_"+str(datetime.now().date())+".tar.bz2 dado_bruto_"+str(datetime.now().date())+".log", cwd=dir, timeout = 10000))
-print(pexpect.run("truncate -s 0 dado_bruto.log dado_bruto_"+str(datetime.now().date())+".log", cwd=dir, timeout = -1))   
-print(pexpect.run("mv dado_bruto_"+str(datetime.now().date())+".log dado_bruto.log", cwd=dir, timeout = -1))   
+print(pexpect.run("mv dado_bruto.log dado_bruto_"+str(datetime.now().date())+".log", cwd=workdir, timeout = -1))
+print(pexpect.run("tar -cvjf dado_bruto_"+str(datetime.now().date())+".tar.bz2 dado_bruto_"+str(datetime.now().date())+".log", cwd=workdir, timeout = 10000))
+print(pexpect.run("truncate -s 0 dado_bruto.log dado_bruto_"+str(datetime.now().date())+".log", cwd=workdir, timeout = -1))   
+print(pexpect.run("mv dado_bruto_"+str(datetime.now().date())+".log dado_bruto.log", cwd=workdir, timeout = -1))   
