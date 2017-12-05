@@ -1,5 +1,5 @@
 '''
-Sistema para obtenção e registro de dados de ativos da BMF&BOVESPA
+Sistema para coleta e registro de dados de ativos da BMF&BOVESPA
 O sistema registra os dados de negócio e livro de ofertas dos ativos selecionados
 Os dados são obtidos em "tempo real" através do sistema de cotações Cedro Crystal Datafeed
 A conexão é feita via telnet nativo do linux, usando a biblioteca pexpect
