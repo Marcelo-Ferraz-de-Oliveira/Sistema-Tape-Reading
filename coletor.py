@@ -1,5 +1,5 @@
 '''
-Sistema para coleta e registro de dados de ativos da BMF&BOVESPA
+Sistema para obtenção e registro de dados de ativos da BMF&BOVESPA
 O sistema registra os dados de negócio e livro de ofertas dos ativos selecionados
 Os dados são obtidos em "tempo real" através do sistema de cotações Cedro Crystal Datafeed
 A conexão é feita via telnet nativo do linux, usando a biblioteca pexpect
@@ -10,10 +10,10 @@ Para entender a sintaxe do sistema, acesse: http://files.cedrotech.com/Downloads
 import pexpect
 from datetime import datetime, time
 
-workdir = "seu_diretorio"#edite inserindo o diretório de trabalho
-username = "nome_usuario"#edite inserindo seu usuário de acesso ao Crystal DataFeed
-password = "senha"#edite inserindo sua senha de acesso ao Crystal DataFeed
-
+workdir = "/wall_e"#edite inserindo o diretório de trabalho
+username = "mfogoiania"#edite inserindo seu usuário de acesso ao Crystal DataFeed
+password = "102030"#edite inserindo sua senha de acesso ao Crystal DataFeed
+logfile = open(workdir+"/log.txt", "a")
 '''
 Classe para receber os dados, adicionar um timestamp no formato unix_epoch em microsegundos ao fina de cada linha, e salvar em arquivo. 
 A classe recebe como parâmetro um file handle e ela própria simula um, uma vez que o pexpect espera receber um file handle como parâmetro
@@ -154,13 +154,13 @@ ativos = ["taee11",
           "mult3",
           "natu3",
           "estc3",
-          "suzb5",
+          "suzb3",
           "qual3",
           "csan3",
           "brap4",
           "elet3",
           "mrve3",
-          "smle3",
+          "smls3",
           "cyre3",
           "enbr3",
           "cple6",
@@ -171,32 +171,72 @@ ativos.append("dol"+dolar)
 ativos.append("wdo"+dolar)
 #função para iniciar a leitura dos dados via telnet, usando a biblioteca pexpect, e repassá-los à função TimeStampedFile
 def rodar():
-    telconn = pexpect.spawn("telnet datafeed1.cedrofinances.com.br 81")
-    telconn.logfile_read=TimestampedFile(open(workdir+"\dado_bruto.log","a"))
-    telconn.delaybeforesend = 0
-    telconn.expect(".")
-    telconn.sendline("")
-    telconn.expect(":")
-    telconn.sendline(username)
-    telconn.expect(":")
-    telconn.sendline(password)
-    telconn.expect("d")
+    try:
+        print("Conectando em: "+str(datetime.now()))
+        telconn = pexpect.spawn("telnet datafeed1.cedrofinances.com.br 81")
+        telconn.logfile_read=TimestampedFile(open(workdir+"/dado_bruto.log","a"))
+        telconn.delaybeforesend = 0
+        telconn.expect(".")
+        telconn.sendline("")
+        telconn.expect(":")
+        telconn.sendline(username)
+        telconn.expect(":")
+        telconn.sendline(password)
+        telconn.expect("d")
     #faz a requisição de informações para cada ativo da lista
-    for ativo in ativos:
-        telconn.sendline("sqt "+ativo)
-        telconn.sendline("bqt "+ativo)
+        for ativo in ativos:
+            telconn.sendline("sqt "+ativo)
+            telconn.sendline("bqt "+ativo)
+    except:
+        rodar()
     while 1==1:
         try:
             telconn.expect("\n")
         except pexpect.TIMEOUT:#pode ocorrer timeout caso não sejam obtidas novas informações por algum período de tempo
             pass
-        except:#em caso de outra exceção (como a queda do sistema), a função é chamada novamente para tentar uma reconexão
+        except Exception as e:#em caso de outra exceção (como a queda do sistema), a função é chamada novamente para tentar uma reconexão
+            print("Falha em: "+str(datetime.now()))
+            print(e)
             rodar()
         if datetime.now().time() >= time(18,30,0):#encerra o sistema às 18:30 - horário de Brasília
             telconn.close()
             break
 
+print("Iniciando em: "+str(datetime.now()))
 rodar()
+
+
+#inicia o sistema para coletar os dados do gqt após âs 18:30
+telconn = pexpect.spawn("telnet datafeed1.cedrofinances.com.br 81")
+telconn.logfile_read=TimestampedFile(open(workdir+"/dado_bruto.log","a"))
+telconn.delaybeforesend = 0
+telconn.expect(".")
+telconn.sendline("")
+telconn.expect(":")
+telconn.sendline(username)
+telconn.expect(":")
+telconn.sendline(password)
+telconn.expect("d")
+#faz a requisição de gqt para cada ativo da lista
+step = 50000
+for ativo in ativos:
+    posicao = 0
+    while posicao < 2000000:
+        telconn.sendline("gqt "+ativo+" N "+str(step)+" "+str(posicao)+" 1")
+        posicao += step
+        while 1==1:
+            try:
+                valor = telconn.expect([":E:1",":GQT:",pexpect.TIMEOUT])
+                if valor == 0:
+                    break
+                if valor == 1:
+                    break
+            
+            except Exception as e:
+                print(e)
+                raise
+
+
 
 #Datar e compactar os arquivos
 print(pexpect.run("mv dado_bruto.log dado_bruto_"+str(datetime.now().date())+".log", cwd=workdir, timeout = -1))
