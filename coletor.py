@@ -10,9 +10,9 @@ Para entender a sintaxe do sistema, acesse: http://files.cedrotech.com/Downloads
 import pexpect
 from datetime import datetime, time
 
-workdir = "/wall_e"#edite inserindo o diretório de trabalho
-username = "mfogoiania"#edite inserindo seu usuário de acesso ao Crystal DataFeed
-password = "102030"#edite inserindo sua senha de acesso ao Crystal DataFeed
+workdir = "/diretorio"#edite inserindo o diretório de trabalho
+username = "username"#edite inserindo seu usuário de acesso ao Crystal DataFeed
+password = "password"#edite inserindo sua senha de acesso ao Crystal DataFeed
 logfile = open(workdir+"/log.txt", "a")
 '''
 Classe para receber os dados, adicionar um timestamp no formato unix_epoch em microsegundos ao fina de cada linha, e salvar em arquivo. 
